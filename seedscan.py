@@ -32,9 +32,20 @@ def main():
     print "Total Time: %0.2f seconds" % (end - start,)
 
 
-# path_info is an array whose size will reflect the depth to which
-# seedscan probes. Each element is a pair of counts [directories, files]
-# for each level.
+# path - the path to traverse or evaluate
+#
+# path_info - an array whose size will reflect the depth to which
+# seedscan probed. Each element is a pair of counts [directories, files]
+# for each level. 
+#
+# totals - an array of integers that gets updated with the total number of 
+# directories and files found. 
+#
+# level - the current depth from the root directory
+#
+# last_print - the amount of files/directories encountered since the last
+# update was printed.
+#
 
 def process_path(path, path_info, totals, level, last_print):
     if (level + 1) > len(path_info):
