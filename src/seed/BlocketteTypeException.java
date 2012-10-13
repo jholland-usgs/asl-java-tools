@@ -21,7 +21,9 @@ package seed;
 public class BlocketteTypeException
 extends Exception
 {
-    public BlocketteTypeException()
+	private static final long serialVersionUID = 1L;
+
+	public BlocketteTypeException()
     {
         super();
     }

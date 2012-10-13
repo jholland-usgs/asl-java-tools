@@ -18,9 +18,6 @@
  */
 package seed;
 
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-
 import asl.util.MicroCalendar;
 
 /*

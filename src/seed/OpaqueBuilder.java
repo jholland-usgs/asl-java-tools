@@ -26,12 +26,9 @@
 
 package seed;
 
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Hashtable;
 
 /** This class represents the Blockette 2000 from the SEED standard V2.4 
  *
@@ -45,7 +42,6 @@ public class OpaqueBuilder
     private Collection<String> tags;
     private ByteOrder blocketteByteOrder;
     private ByteOrder opaqueByteOrder;
-    private short maxBlocketteLength;
     private short maxOpaqueLength;
     private boolean fileOriented;
     private boolean strictPackaging;
@@ -73,7 +69,6 @@ public class OpaqueBuilder
         this.tags = tags;
         this.blocketteByteOrder = blocketteByteOrder;
         this.opaqueByteOrder = opaqueByteOrder;
-        this.maxBlocketteLength = maxBlocketteLength;
         maxOpaqueLength = (short)(maxBlocketteLength - Blockette2000.FIXED_LENGTH - tagBuffer.length);
         this.fileOriented = fileOriented;
         this.strictPackaging = strictPackaging;

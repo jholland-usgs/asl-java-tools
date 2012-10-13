@@ -21,7 +21,9 @@ package seed;
 public class OpaqueSegmentOutOfOrderException
 extends Exception
 {
-    public OpaqueSegmentOutOfOrderException()
+	private static final long serialVersionUID = 1L;
+
+	public OpaqueSegmentOutOfOrderException()
     {
         super();
     }

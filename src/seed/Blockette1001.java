@@ -27,7 +27,6 @@
  */
 
 package seed;
-import java.nio.ByteBuffer;
 /**
  * The blockette 1001 has :
  * 0  i*2 blockette type  is 1001

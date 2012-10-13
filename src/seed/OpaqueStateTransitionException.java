@@ -21,7 +21,9 @@ package seed;
 public class OpaqueStateTransitionException
 extends Exception
 {
-    public OpaqueStateTransitionException()
+	private static final long serialVersionUID = 1L;
+
+	public OpaqueStateTransitionException()
     {
         super();
     }

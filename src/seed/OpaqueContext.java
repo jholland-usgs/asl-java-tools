@@ -68,12 +68,14 @@ class OpaqueContext
 
     public boolean isComplete()
     {
-        boolean complete = false;
+        boolean complete;
         switch (state) {
             case RECORD:
             case STREAM_END:
             case FILE_END:
-                complete = true;
+                complete = true; break;
+            default:
+            	complete = false;
         }
         return complete;
     }
