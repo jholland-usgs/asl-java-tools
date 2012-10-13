@@ -33,6 +33,7 @@ import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Hashtable;
 
 /** This class represents a mini-seed packet.  It can translate binary data in
  * a byte array and break apart the fixed data header and other data blockettes
@@ -130,7 +131,8 @@ public class MiniSeed  implements MiniSeedOutputHandler {
   private Blockette1000 b1000;
   private Blockette1001 b1001;
 
-  private ArrayList<Blockette2000> b2000s;
+  //private ArrayList<Blockette2000> b2000s;
+  private Hashtable<Integer, ArrayList<Blockette>> blocketteMap;
   
   // Data we need from the type 1000 and 1001
   private byte order;         // 0=little endian, 1 = big endian
@@ -166,7 +168,8 @@ public class MiniSeed  implements MiniSeedOutputHandler {
     
     cleared=true;
   }
-  public Collection<Blockette2000> getBlk2000s(){return b2000s;}
+  public Collection<Blockette> getBlockettes(Integer type){crack(); return blocketteMap.get(type);}
+  public boolean hasBlockette(Integer type){crack(); return blocketteMap.containsKey(type);}
   public boolean hasBlk1000() {crack(); return hasBlk1000;}
   /** if true, this MiniSeed object is cleared and presumably available for reuse
    */
@@ -856,10 +859,10 @@ public class MiniSeed  implements MiniSeedOutputHandler {
                 ms.get(buf2000);
                 b2000 = new Blockette2000(buf2000);
               }
-              if (b2000s == null) {
-                  b2000s = new ArrayList<Blockette2000>();
+              if (!blocketteMap.containsKey(2000)) {
+                  blocketteMap.put(2000, new ArrayList<Blockette>());
               }
-              b2000s.add(b2000);
+              blocketteMap.get(2000).add(b2000);
               break;
             default: 
               if(dbg) prt("MS: - unknown blockette type="+type);
