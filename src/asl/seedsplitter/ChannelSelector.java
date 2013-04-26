@@ -74,6 +74,12 @@ implements ActionListener,
            ListSelectionListener, 
            ListDataListener
 {
+	public static void main(String args[]) {
+		JFrame frame = new JFrame();
+		ChannelSelector selector = new ChannelSelector(frame, 20, 20, ".", 1);
+		selector.setVisible(true);
+	}
+
     /**
      * 1  Initial distribution
      */

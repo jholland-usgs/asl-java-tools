@@ -31,7 +31,6 @@ import java.nio.ByteOrder;
 import java.text.DecimalFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-import java.util.Collection;
 import java.util.Hashtable;
 
 /** This class represents a mini-seed packet.  It can translate binary data in
@@ -815,7 +814,7 @@ public class MiniSeed  implements MiniSeedOutputHandler {
               if(dbg) prt("MS: - unknown blockette type="+type);
               blkBuf = new byte[4];
               ms.get(blkBuf);
-              blk = new GenericBlockette(blkBuf); // TODO: implement class
+              blk = new GenericBlockette(blkBuf);
               blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
               addBlockette(blk);
               next = blk.getNextOffset();

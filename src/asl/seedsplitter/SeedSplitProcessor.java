@@ -163,6 +163,53 @@ implements Runnable
         m_running = false;
         m_queue.offer(new ByteBlock(null, 0, true, true));
     }
+    
+    private boolean checkMatch(Pattern pattern, String section) {
+        if (pattern == null)
+            return true;
+        if (pattern.matcher(section).matches())
+            return true;
+        return false;
+    }
+    
+    private class ChannelIdentity {
+        private String network;
+        private String station;
+        private String location;
+        private String channel;
+        
+    	public ChannelIdentity(String seedstring) {
+	        network = seedstring.substring(0,2).trim();
+	        station = seedstring.substring(2,7).trim();
+	        location = seedstring.substring(10,12).trim();
+	        channel = seedstring.substring(7,10).trim();
+    	}
+
+		public String getNetwork() {
+			return network;
+		}
+
+		public String getStation() {
+			return station;
+		}
+
+		public String getLocation() {
+			return location;
+		}
+
+		public String getChannel() {
+			return channel;
+		}
+    	
+    	
+    }
+    
+    private boolean isMatchingChannel(ChannelIdentity channelId) {
+        return checkMatch(m_patternNetwork, channelId.getNetwork()) &&
+        		checkMatch(m_patternStation, channelId.getStation()) &&
+        		checkMatch(m_patternLocation, channelId.getLocation()) &&
+        		checkMatch(m_patternChannel, channelId.getChannel());
+    }
 
     private volatile int lastSequenceNumber = 0;
     /**
@@ -171,31 +218,13 @@ implements Runnable
      */
     @Override
     public void run() {
-        ByteBlock block = null;
-        MiniSeed  record = null;
         DataSet   tempData = null;
 
-        String network  = null;
-        String station  = null;
-        String location = null;
-        String channel  = null;
         double sampleRate = 0.0;
         long   interval = 0;
 
-        int[] ymd = null;
-        int year;
-        int month;
-        int day;
-        int doy;
-        int hour;
-        int minute;
-        int second;
-        int husec;
-        long startTime = 0;
-
         byte[] recordBytes = null;
         int[] samples = null;
-        int[] timeComp = null;
         GregorianCalendar cal = null;
         String seedstring = null;
         // total number of bytes that have been received from the queue
@@ -206,8 +235,6 @@ implements Runnable
         Hashtable<String,DataSet> temps = new Hashtable<String,DataSet>();
         Hashtable<String,Integer> recordCounts = new Hashtable<String,Integer>();
 
-        Matcher matcher = null;
-
         int kept = 0;
         int discarded = 0;
 
@@ -215,7 +242,7 @@ implements Runnable
         while (m_running) {
             progress: {
                 try {
-                    block = m_queue.take();
+                    ByteBlock block = m_queue.take();
                     // even if we don't end up using this data, it counts toward our progress
                     byteTotal += block.getLength();
                     byteTotal += block.getSkippedBytes();
@@ -229,38 +256,12 @@ implements Runnable
                         logger.finer("Found HEARTBEAT record!");
                     } else {
                         seedstring = MiniSeed.crackSeedname(recordBytes);
-                        network = seedstring.substring(0,2).trim();
-                        if (m_patternNetwork != null) {
-                            matcher = m_patternNetwork.matcher(network);
-                            if (!matcher.matches()) {
-                                discarded++;
-                                break progress;
-                            }
+                        ChannelIdentity channelId = new ChannelIdentity(seedstring);
+                        if (!isMatchingChannel(channelId)) {
+                            discarded++;
+                            break progress;
                         }
-                        station = seedstring.substring(2,7).trim();
-                        if (m_patternStation != null) {
-                            matcher = m_patternStation.matcher(station);
-                            if (!matcher.matches()) {
-                                discarded++;
-                                break progress;
-                            }
-                        }
-                        location = seedstring.substring(10,12).trim();
-                        if (m_patternLocation != null) {
-                            matcher = m_patternLocation.matcher(location);
-                            if (!matcher.matches()) {
-                                discarded++;
-                                break progress;
-                            }
-                        }
-                        channel = seedstring.substring(7,10).trim();
-                        if (m_patternChannel != null) {
-                            matcher = m_patternChannel.matcher(channel);
-                            if (!matcher.matches()) {
-                                discarded++;
-                                break progress;
-                            }
-                        }
+                        
                         sampleRate = MiniSeed.crackRate(recordBytes);
                         try {
                             interval = DataSet.sampleRateToInterval(sampleRate);
@@ -271,8 +272,13 @@ implements Runnable
                             break progress;
                         }
                         kept++;
-                        logger.finer(String.format("%s_%s %s-%s", network, station, location, channel));
-                        key = String.format("%s_%s %s-%s (%.1f Hz)", network, station, location, channel, sampleRate);
+                        logger.finer(String.format("%s_%s %s-%s",
+                        		channelId.getNetwork(), channelId.getStation(),
+                        		channelId.getLocation(), channelId.getChannel()));
+                        key = String.format("%s_%s %s-%s (%.1f Hz)",
+                        		channelId.getNetwork(), channelId.getStation(),
+                        		channelId.getLocation(), channelId.getChannel(),
+                        		sampleRate);
 
                         if (!recordCounts.containsKey(key)) {
                             recordCounts.put(key, 1);
@@ -282,21 +288,21 @@ implements Runnable
 
                         TimeZone.setDefault(TimeZone.getTimeZone("GMT"));
 
-                        year   = MiniSeed.crackYear(recordBytes);
-                        doy    = MiniSeed.crackDOY(recordBytes);
-                        ymd    = SeedUtil.ymd_from_doy(year, doy);
-                        month  = ymd[1] - 1;
-                        day    = ymd[2];
-                        timeComp = MiniSeed.crackTime(recordBytes);
-                        hour   = timeComp[0];
-                        minute = timeComp[1];
-                        second = timeComp[2];
-                        husec  = timeComp[3];
+                        int year   = MiniSeed.crackYear(recordBytes);
+                        int doy    = MiniSeed.crackDOY(recordBytes);
+                        int[] ymd    = SeedUtil.ymd_from_doy(year, doy);
+                        int month  = ymd[1] - 1;
+                        int day    = ymd[2];
+                        int[] timeComp = MiniSeed.crackTime(recordBytes);
+                        int hour   = timeComp[0];
+                        int minute = timeComp[1];
+                        int second = timeComp[2];
+                        int husec  = timeComp[3];
 
                         cal = new GregorianCalendar(m_tz);
                         cal.set(year, month, day, hour, minute, second);
                         cal.setTimeInMillis((cal.getTimeInMillis() / 1000L * 1000L) + (husec / 10));
-                        startTime = (cal.getTimeInMillis() * 1000) + (husec % 10) * 100; 
+                        long startTime = (cal.getTimeInMillis() * 1000) + (husec % 10) * 100; 
 
                         if (!temps.containsKey(key)) {
                             tempData = null;
@@ -357,10 +363,10 @@ implements Runnable
                             }
                             logger.finer("Creating new DataSet");
                             tempData = new DataSet();
-                            tempData.setNetwork(network);
-                            tempData.setStation(station);
-                            tempData.setLocation(location);
-                            tempData.setChannel(channel);
+                            tempData.setNetwork(channelId.getNetwork());
+                            tempData.setStation(channelId.getStation());
+                            tempData.setLocation(channelId.getLocation());
+                            tempData.setChannel(channelId.getChannel());
                             tempData.setStartTime(startTime);
                             try {
                                 tempData.setSampleRate(sampleRate);
@@ -377,7 +383,7 @@ implements Runnable
                             }
                             temps.put(key, tempData);
                         }
-                        record = new MiniSeed(recordBytes);
+                        MiniSeed record = new MiniSeed(recordBytes);
                         samples = record.decomp();
                         // blockettes = record.getBlockettes();
                         lastSequenceNumber = record.getSequence();
