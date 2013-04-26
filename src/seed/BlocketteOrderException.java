@@ -21,7 +21,9 @@ package seed;
 public class BlocketteOrderException
 extends Exception
 {
-    public BlocketteOrderException()
+	private static final long serialVersionUID = 1L;
+
+	public BlocketteOrderException()
     {
         super();
     }

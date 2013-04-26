@@ -34,7 +34,8 @@
  */
 
 package seed;
-import java.nio.ByteBuffer;
+
+import java.nio.ByteOrder;
 
 /** This class represents the Blockette 1000 from the SEED standard V2.4 
  * Blockette1000.java
@@ -65,6 +66,7 @@ extends Blockette
     /** get word order
      * @return true if bigEndian, false if little endian 
      */
+    public ByteOrder getWordOrder() {return (buf[5] == 0) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;}
     public boolean isBigEndian() {return (buf[5] != 0);}
     /** set the encoding
      *@param b The encoding to use (10-steim1, 11=steim2, 19=steim3*/

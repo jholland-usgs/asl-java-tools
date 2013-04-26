@@ -28,11 +28,6 @@
 
 package seed;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Hashtable;
 
 /** This class represents the Blockette 2000 from the SEED standard V2.4 

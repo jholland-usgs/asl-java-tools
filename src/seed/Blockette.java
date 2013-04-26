@@ -40,22 +40,43 @@ public abstract class Blockette
 
     protected byte [] buf;
     protected ByteBuffer bb;
+    
+    private Blockette nextBlk;
+    private Blockette prevBlk;
 
-    public Blockette()
-    {
-        this(4);
-    }
-
-    public Blockette(int bufferSize)
-    {
+    public Blockette(int bufferSize) {
+    	nextBlk = this;
+    	prevBlk = this;
         allocateBuffer(bufferSize);
         bb.position(0);
         bb.putShort(blocketteNumber());
     }
 
+    public Blockette() {
+        this(4);
+    }
+
     public Blockette(byte [] b)
     {
+    	nextBlk = this;
+    	prevBlk = this;
         reload(b);
+    }
+
+    public Blockette next() {
+    	return nextBlk;
+    }
+
+    public Blockette prev() {
+    	return prevBlk;
+    }
+
+    public void setNext(Blockette blk) {
+    	nextBlk = blk;
+    }
+
+    public void setPrev(Blockette blk) {
+    	prevBlk = blk;
     }
 
     public void reload(byte [] b)

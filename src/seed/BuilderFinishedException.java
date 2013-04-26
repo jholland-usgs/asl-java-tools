@@ -21,7 +21,9 @@ package seed;
 public class BuilderFinishedException
 extends Exception
 {
-    public BuilderFinishedException()
+	private static final long serialVersionUID = 1L;
+
+	public BuilderFinishedException()
     {
         super();
     }

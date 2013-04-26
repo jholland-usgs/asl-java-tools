@@ -31,8 +31,7 @@ import java.nio.ByteOrder;
 import java.text.DecimalFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Hashtable;
 
 /** This class represents a mini-seed packet.  It can translate binary data in
  * a byte array and break apart the fixed data header and other data blockettes
@@ -130,7 +129,7 @@ public class MiniSeed  implements MiniSeedOutputHandler {
   private Blockette1000 b1000;
   private Blockette1001 b1001;
 
-  private ArrayList<Blockette2000> b2000s;
+  private Hashtable<Integer, Blockette> blocketteMap;
   
   // Data we need from the type 1000 and 1001
   private byte order;         // 0=little endian, 1 = big endian
@@ -166,7 +165,8 @@ public class MiniSeed  implements MiniSeedOutputHandler {
     
     cleared=true;
   }
-  public Collection<Blockette2000> getBlk2000s(){return b2000s;}
+  public Blockette getBlockette(Integer type){crack(); return blocketteMap.get(type);}
+  public boolean hasBlockette(Integer type){crack(); return blocketteMap.containsKey(type);}
   public boolean hasBlk1000() {crack(); return hasBlk1000;}
   /** if true, this MiniSeed object is cleared and presumably available for reuse
    */
@@ -640,14 +640,14 @@ public class MiniSeed  implements MiniSeedOutputHandler {
         int5.format(hour).substring(3,5)+
         ":"+int5.format(minute).substring(3,5)+":"+int5.format(sec).substring(3,5)+"."+
         int5.format(husec).substring(1,5));
-          blockettes = new ByteBuffer[nblockettes];
-          blocketteList = new short[nblockettes];
+          blockettes = new ByteBuffer[nblockettes]; // TODO: Remove
+          blocketteList = new short[nblockettes]; // TODO: Remove
           blocketteOffsets = new int[nblockettes];
         }
         ms.position(blocketteOffset);
         short  next=blocketteOffset;
-        for(int blk=0; blk<nblockettes; blk++) {
-          blocketteOffsets[blk] = next;
+        for(int blkIdx=0; blkIdx<nblockettes; blkIdx++) {
+          blocketteOffsets[blkIdx] = next;
           short type =ms.getShort();
 //System.out.format("==== MiniSeed.crack: blockette type=[%d]\n", type);
           // This is the problem when blockette 1001 was not swapped for a shor ttime 2009,128-133
@@ -660,77 +660,61 @@ public class MiniSeed  implements MiniSeedOutputHandler {
             }
           }
 
-          if(dbg) prt(blk+"                                           **** MS: Blockette type="+type+" off="+next);
-          blocketteList[blk]=type;
+          if(dbg) prt(blkIdx+"                                           **** MS: Blockette type="+type+" off="+next);
+          blocketteList[blkIdx]=type;
           if(next < 48 || next >= 400)  {
             if(nsamp > 0)
               Util.prt("Bad position in blockettes next2="+next);
-            nblockettes=(byte) blk;
+            nblockettes=(byte) blkIdx;
             break;
           }
           ms.position((int) next);
+          Blockette blk;
+          byte[] blkBuf;
           switch(type) {
+          	/*
             case 100:     // Sample Rate Blockette
-              if(buf100 == null) {
-                buf100=new byte[12];
-                bb100=ByteBuffer.wrap(buf100);
-              }
-              blockettes[blk]=bb100;
-              ms.get(buf100);
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 100
-              next=blockettes[blk].getShort();
+              blkBuf = new byte[12];
+              ms.get(blkBuf);
+              blk = Blockette100(blkBuf); // TODO: implement class
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
               break;
             case 200:     // Generic Event Detection
-              if(buf200 == null ) {
-                buf200=new byte[28];
-                bb200=ByteBuffer.wrap(buf200);
-              }
-              blockettes[blk]=bb200;
-              ms.get(buf200);
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 200
-              next=blockettes[blk].getShort();
+              blkBuf = new byte[28];
+              ms.get(blkBuf);
+              blk = Blockette200(blkBuf); // TODO: implement class
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
               break;
             case 201:     // Murdock Event Detection
-              if(buf201 == null) {
-                buf201=new byte[60];
-                bb201=ByteBuffer.wrap(buf201);
-              }
-              blockettes[blk]=bb201;
-              ms.get(buf201);
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 201
-              next=blockettes[blk].getShort();
+              blkBuf = new byte[60];
+              ms.get(blkBuf);
+              blk = Blockette201(blkBuf); // TODO: implement class
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
               break;
             case 300:     // Step Calibration
-              if(buf300 == null) {
-                buf300=new byte[32];
-                bb300=ByteBuffer.wrap(buf300);
-              }
-              blockettes[blk]=bb300;
-              ms.get(buf300);
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 300
-              next=blockettes[blk].getShort();
+              blkBuf = new byte[32];
+              ms.get(blkBuf);
+              blk = Blockette300(blkBuf); // TODO: implement class
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
               break;
             case 310:     // Sine Calbration
-              if(buf310 == null) {
-                buf310=new byte[32];
-                bb310=ByteBuffer.wrap(buf310);
-              }
-              ms.get(buf310);
-              blockettes[blk]=bb310;
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 310
-              next=blockettes[blk].getShort();
+              blkBuf = new byte[32];
+              ms.get(blkBuf);
+              blk = Blockette310(blkBuf); // TODO: implement class
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
               break;
             case 320:     // Pseudo-random calibration
+<<<<<<< HEAD
               if(buf320 == null) {
             //MTH:
                 //buf320=new byte[32];
@@ -744,136 +728,113 @@ System.out.format("== MiniSeed: process blockette 320\n");
               blockettes[blk].clear();
               blockettes[blk].getShort();    // type = 320
               next=blockettes[blk].getShort();
+=======
+              blkBuf = new byte[32];
+              ms.get(blkBuf);
+              blk = Blockette320(blkBuf); // TODO: implement class
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
+>>>>>>> mseed
               break;
             case 390:     // Generic Calibration
-              if(buf390 == null) {
-                buf390=new byte[28];
-                bb390=ByteBuffer.wrap(buf390);
-              }
-              ms.get(buf390);
-              blockettes[blk]=bb390;
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 330
-              next=blockettes[blk].getShort();
+              blkBuf = new byte[28];
+              ms.get(blkBuf);
+              blk = Blockette390(blkBuf); // TODO: implement class
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
               break;
             case 395:     // Calibration abort
-              if(buf395 == null) {
-                buf395=new byte[16];
-                bb395 = ByteBuffer.wrap(buf395);
-              }
-              blockettes[blk]=bb395;
-              ms.get(buf395);
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 395
-              next=blockettes[blk].getShort();
+              blkBuf = new byte[16];
+              ms.get(blkBuf);
+              blk = Blockette395(blkBuf); // TODO: implement class
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
               break;
             case 400:     // Beam blockette
-              if(buf400 == null) {
-                buf400=new byte[16];
-                bb400=ByteBuffer.wrap(buf400);
-              }
-              ms.get(buf400);
-              blockettes[blk]=bb400;
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 400
-              next=blockettes[blk].getShort();
+              blkBuf = new byte[16];
+              ms.get(blkBuf);
+              blk = Blockette400(blkBuf); // TODO: implement class
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
               break;
             case 405:     // Beam Delay 
-              if(buf405 == null) {
-                buf405=new byte[6];
-                bb405=ByteBuffer.wrap(buf405);
-              }
-              ms.get(buf405);
-              blockettes[blk]=bb405;
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 405
-              next=blockettes[blk].getShort();
+              blkBuf = new byte[6];
+              ms.get(blkBuf);
+              blk = Blockette405(blkBuf); // TODO: implement class
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
               break;
-            case 500:     // Timing BLockette
-              if(buf500 == null) {
-                buf500=new byte[200];
-                bb500=ByteBuffer.wrap(buf500);
-              }
-              ms.get(buf500);
-              blockettes[blk]=bb500;
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 500
-              next=blockettes[blk].getShort();
+            case 500:     // Timing Blockette
+              blkBuf = new byte[200];
+              ms.get(blkBuf);
+              blk = Blockette500(blkBuf); // TODO: implement class
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
               break;
+            */
             case 1000:
-              if(buf1000 == null) {
-                buf1000=new byte[8];
-                bb1000=ByteBuffer.wrap(buf1000);            
-                b1000 = new Blockette1000(buf1000);
-              } 
-              ms.get(buf1000);
-              blockettes[blk] = bb1000;
-              b1000.reload(buf1000);
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 1000
-              next=blockettes[blk].getShort();
-              encoding=blockettes[blk].get();
-              order=blockettes[blk].get();
-              recLength=1;
-              recLength = recLength << blockettes[blk].get();
+              blkBuf = new byte[8];
+              ms.get(blkBuf);
+              Blockette1000 blk1000 = new Blockette1000(blkBuf);
+              blk = blk1000;
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
+              encoding = (byte)blk1000.getEncoding();
+              order = (byte)(blk1000.isBigEndian() ? 1 : 0);
+              recLength = blk1000.getRecordLength();
               if(dbg) prt("MS: Blk 1000 length**2="+recLength+" order="+order+
                   " next="+next+" encoding="+encoding);
               hasBlk1000=true;
               break;
             case 1001:      // data extension (Quanterra only?) 
-              if(buf1001 == null) {
-                buf1001=new byte[8];
-                bb1001=ByteBuffer.wrap(buf1001);
-                b1001 = new Blockette1001(buf1001);
-              }
-              ms.get(buf1001);
-              blockettes[blk]=bb1001;
-              b1001.reload(buf1001);
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 1001
-              next=blockettes[blk].getShort();
-              timingQuality=blockettes[blk].get();
-              microSecOffset=blockettes[blk].get();
-              blockettes[blk].get();        // reserved
-              nframes=blockettes[blk].get();
+              blkBuf = new byte[8];
+              ms.get(blkBuf);
+              Blockette1001 blk1001 = new Blockette1001(blkBuf);
+              blk = blk1001;
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
+              timingQuality = (byte) blk1001.getTimingQuality();
+              microSecOffset = (byte) blk1001.getUSecs();
+              nframes = (byte) blk1001.getFrameCount();
               if(dbg) prt("MS: Blk 1001 next="+next+" timing="+timingQuality+" uSecOff="+microSecOffset+
                       " nframes="+nframes);
               hasBlk1001=true;
               break;
             case 2000:
               // duplicate the fixed portion of the header and load it
-              byte[] buf2000 = new byte[Blockette2000.FIXED_LENGTH];
+              blkBuf = new byte[Blockette2000.FIXED_LENGTH];
               ms.mark();
-              ms.get(buf2000);
-              Blockette2000 b2000 = new Blockette2000(buf2000);
+              ms.get(blkBuf);
+              Blockette2000 blk2000 = new Blockette2000(blkBuf);
               // get the actual size of the blockette, and add the full blockette to the list
-              short actualLength = b2000.getBlocketteLength();
-              if (actualLength != buf2000.length) {
-                buf2000 = new byte[actualLength];
+              short actualLength = blk2000.getBlocketteLength();
+              if (actualLength != blkBuf.length) {
+                blkBuf = new byte[actualLength];
                 ms.reset();
-                ms.get(buf2000);
-                b2000 = new Blockette2000(buf2000);
+                ms.get(blkBuf);
+                blk2000 = new Blockette2000(blkBuf);
               }
-              if (b2000s == null) {
-                  b2000s = new ArrayList<Blockette2000>();
-              }
-              b2000s.add(b2000);
+              blk = blk2000;
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk2000);
+              next = blk.getNextOffset();
               break;
             default: 
               if(dbg) prt("MS: - unknown blockette type="+type);
-              byte [] tmp=new byte[4];
-              ms.get(tmp);
-              blockettes[blk]=ByteBuffer.wrap(tmp);
-              if(swap) blockettes[blk].order(ByteOrder.LITTLE_ENDIAN);
-              blockettes[blk].clear();
-              blockettes[blk].getShort();    // type = 1001
-              next=blockettes[blk].getShort();
+              blkBuf = new byte[4];
+              ms.get(blkBuf);
+              blk = new GenericBlockette(blkBuf);
+              blk.setByteOrder(swap ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+              addBlockette(blk);
+              next = blk.getNextOffset();
               break;
           }
         }
@@ -881,6 +842,21 @@ System.out.format("== MiniSeed: process blockette 320\n");
 
       cracked=true;
     }     // end of synchronized on this!
+  }
+  public void addBlockette(Blockette blk) {
+	  int type = blk.getBlocketteType();
+      if (blocketteMap.containsKey(type)) {
+    	  Blockette first = blocketteMap.get(type);
+    	  blk.setPrev(first.prev());
+    	  blk.setNext(first);
+    	  first.prev().setNext(blk);
+    	  first.setPrev(blk);
+      } else {
+          blocketteMap.put(type, blk);
+      }
+  }
+  public Blockette getBlockette(int type) {
+	  return blocketteMap.containsKey(type) ? blocketteMap.get(type) : null;
   }
   public boolean deleteBlockette(int type) {
     for(int i=0; i<nblockettes; i++) {
